@@ -47,10 +47,20 @@ class TrainsCollection:
         res = []
         for available in self.available_trains:
             res.append([
-                available["train_no"],Fore.GREEN+available["from_station"]+Fore.RESET+ "\n" + Fore.RED+available["to_station"]+Fore.RESET,
-                Fore.GREEN+available["start_time"] +Fore.RESET+ "\n" +Fore.RED+available["end_time"]+Fore.RESET,  self._get_duration(available["duration"]), available["business_seat"],
-                available["first_seat"],available["second_seat"],available["gjrw"],available["rw"],available["dw"],
-                available["yw"], available["rz"],available["yz"],available["wz"]
+                available["train_code"],
+                Fore.GREEN+available["from_station"]+Fore.RESET+ "\n" + Fore.RED+available["to_station"]+Fore.RESET,
+                Fore.GREEN+available["start_time"] +Fore.RESET+ "\n" +Fore.RED+available["end_time"]+Fore.RESET,
+                self._get_duration(available["duration"]),
+                available["business_seat"] + "\n" + available["business_price"],
+                available["first_seat"] + "\n" + available["first_seat_price"],
+                available["second_seat"] + "\n" + available["first_seat_price"],
+                available["gjrw"] + "\n" + available["gjrw_seat_price"],
+                available["rw"] + "\n" + available["rw_seat_price"],
+                available["dw"]+ "\n" + available["dw_seat_price"],
+                available["yw"]+ "\n" + available["yw_seat_price"],
+                available["rz"]+ "\n" + available["rz_seat_price"],
+                available["yz"]+ "\n" + available["yz_seat_price"],
+                available["wz"]+ "\n" + available["wz_seat_price"]
 
             ])
         return res
@@ -74,52 +84,100 @@ def cli():
     get_station_url = "https://kyfw.12306.cn/otn/leftTicket/query?leftTicketDTO.train_date={}&leftTicketDTO.from_station={}&leftTicketDTO.to_station={}&purpose_codes=ADULT".format(
         date, fstation, tstation)
     r = requests.get(get_station_url)
-    try:
-        json_res = r.json()['data']
-        result = json_res['result']
-        trains = []
-        for res in result:
-            # 分割数据
-            r_list = res.split("|")
-            # 过滤数据
-            r_dict = {
-                'train_code': r_list[3],
-                'train_no': r_list[2],
-                'start_time': r_list[8],
-                'end_time': r_list[9],
-                'duration': r_list[10],
-                'from_station': json_res['map'].get(r_list[6]),
-                'to_station': json_res['map'].get(r_list[7]),
-                'date': r_list[13],
-                'business_seat': r_list[-5],
-                'first_seat': r_list[-6],
-                'second_seat': r_list[-7],
-                'gjrw': r_list[-8],
-                'rw': r_list[-9],
-                'dw': r_list[-10],
-                'yw': r_list[-11],
-                'rz': r_list[-12],
-                'yz': r_list[-13],
-                'wz': r_list[-14],
-                'qt': r_list[-15],
-                'remark': r_list[1],
-                'seat_type': r_list[-2],
-                "from_station_no": r_list[16],
-                "destinction_no": r_list[17],
-            }
-            for key,value in r_dict.items():
-                if value == "":
-                    r_dict[key] = "--"
+    json_res = r.json()['data']
+    result = json_res['result']
+    trains = []
+    for res in result:
+        # 分割数据
+        r_list = res.split("|")
+        # 过滤数据
+        r_dict = {
+            'train_code': r_list[3],
+            'train_no': r_list[2],
+            'start_time': r_list[8],
+            'end_time': r_list[9],
+            'duration': r_list[10],
+            'from_station': json_res['map'].get(r_list[6]),
+            'to_station': json_res['map'].get(r_list[7]),
+            'date': r_list[13],
+            'business_seat': r_list[-5],
+            'first_seat': r_list[-6],
+            'second_seat': r_list[-7],
+            'gjrw': r_list[-8],
+            'rw': r_list[-9],
+            'dw': r_list[-10],
+            'yw': r_list[-11],
+            'rz': r_list[-12],
+            'yz': r_list[-13],
+            'wz': r_list[-14],
+            'qt': r_list[-15],
+            'remark': r_list[1],
+            'seat_type': r_list[-2],
+            "from_station_no": r_list[16],
+            "destinction_no": r_list[17],
+        }
+        for key, value in r_dict.items():
+            if value == "":
+                r_dict[key] = "--"
+        get_price(r_dict, date)
+        trains.append(r_dict)
 
-            trains.append(r_dict)
 
-        t = TrainsCollection(trains,options)
-        t.pretty_print()
+    t = TrainsCollection(trains, options)
+    t.pretty_print()
 
-    except BaseException:
 
-        print('Bye')
 
+def get_price(dic, date):
+    url = "https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice?train_no={}&from_station_n" \
+          "o={}&to_station_no={}&seat_types={}&train_date={}".format(dic["train_no"],
+           dic["from_station_no"],dic["destinction_no"],dic["seat_type"],date)
+    r = requests.get(url)
+    price_dic = {
+        "business_price": "--",
+        "first_seat_price": "--",
+        "second_seat_price": "--",
+        "gjrw_seat_price": "--",
+        "rw_seat_price": "--",
+        "dw_seat_price": "--",
+        "yw_seat_price": "--",
+        "rz_seat_price": "--",
+        "yz_seat_price": "--",
+        "wz_seat_price": "--"
+    }
+    data_dic = r.json()["data"]
+    if("A9" in data_dic.keys()):
+        price_dic["business_price"] = data_dic["A9"]
+    elif("p" in data_dic.keys()):
+        price_dic["business_price"] = data_dic["p"]
+    # 一等座
+    if("M" in data_dic.keys()):
+        price_dic["first_seat_price"] = data_dic["M"]
+    # 二等座
+    if("O" in data_dic.keys()):
+        price_dic["second_seat_price"] = data_dic["O"]
+    # 高级软卧
+    if("A6" in data_dic.keys()):
+        price_dic["gjrw_seat_price"] = data_dic["A6"]
+    # 软卧
+    if("A4" in data_dic.keys()):
+        price_dic["rw_seat_price"] = data_dic["A4"]
+    # 动卧
+    if("F" in data_dic.keys()):
+        price_dic["dw_seat_price"] = data_dic["F"]
+    # 硬卧
+    if("A3" in data_dic.keys()):
+        price_dic["yw_seat_price"] = data_dic["A3"]
+    # 软座
+    if("A2" in data_dic.keys()):
+        price_dic["rz_seat_price"] = data_dic["A2"]
+    # 硬座
+    if("A1" in data_dic.keys()):
+        price_dic["yz_seat_price"] = data_dic["A1"]
+    # 无座
+    if("WZ" in data_dic.keys()):
+        price_dic["wz_seat_price"] = data_dic["WZ"]
+    dic.update(price_dic)
 
 
 if __name__ == '__main__':
