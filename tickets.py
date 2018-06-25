@@ -1,4 +1,3 @@
-﻿
 #docstring--docopt
 
 '''命令行火车票查看器
@@ -199,4 +198,5 @@ if __name__ == '__main__':
 #       "={}&leftTicketDTO.from_station={}&leftTicketDTO.to_station={}&purpose_codes=ADULT".format(date, station.get(fstation, ''), station[tstation])
 # r = requests.get(url)
 #
+
 # pprint(r.text)
